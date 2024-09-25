@@ -1,0 +1,61 @@
+<#
+.SYNOPSIS
+    Bulk user creation in Active Directory using data from a CSV file.
+
+.DESCRIPTION
+    This script reads a CSV file containing user details (like first name, last name, username, password, etc.) and creates user accounts in Active Directory. It also assigns the users to the specified Organizational Unit (OU).
+
+.PARAMETER csvFilePath
+    The path to the CSV file that contains user information.
+
+.EXAMPLE
+    .\BulkADUserCreation.ps1 -csvFilePath "C:\UsersToCreate.csv"
+
+    This command will create Active Directory user accounts based on the information in the CSV file.
+
+.NOTES
+    Author: Mr. Lohumi
+    Version: 1.0
+    License: MIT License
+#>
+
+# Import Active Directory module
+Import-Module ActiveDirectory
+
+# CSV file path parameter
+param (
+    [string]$csvFilePath = "C:\UsersToCreate.csv"
+)
+
+# Import CSV file containing user data
+$users = Import-Csv -Path $csvFilePath
+
+# Loop through each user in the CSV file and create an AD user account
+foreach ($user in $users) {
+    $firstName = $user.FirstName
+    $lastName = $user.LastName
+    $userName = $user.Username
+    $password = $user.Password | ConvertTo-SecureString -AsPlainText -Force
+    $ou = $user.OU
+    $displayName = "$firstName $lastName"
+    
+    try {
+        # Create the user in Active Directory
+        New-ADUser `
+            -GivenName $firstName `
+            -Surname $lastName `
+            -SamAccountName $userName `
+            -UserPrincipalName "$userName@domain.com" `
+            -Name $displayName `
+            -DisplayName $displayName `
+            -AccountPassword $password `
+            -Enabled $true `
+            -Path $ou `
+            -PasswordNeverExpires $true
+
+        Write-Host "User $displayName created successfully." -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Failed to create user $displayName. Error: $_" -ForegroundColor Red
+    }
+}
